@@ -2,89 +2,118 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>예수천국 맞추기 게임!!</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        /* 카드 3D 뒤집기 효과를 위한 CSS */
-        .perspective-1000 {
-            perspective: 1000px;
+        /* 100dvh를 사용하여 모바일 브라우저 주소창을 제외한 순수 화면 크기에 맞춤 */
+        body {
+            height: 100dvh;
+            overflow: hidden; /* 스크롤 방지 */
+            touch-action: none; /* 모바일에서 화면 당겨서 새로고침 방지 */
         }
-        .transform-style-3d {
-            transform-style: preserve-3d;
-        }
+
+        /* 카드 3D 뒤집기 효과 */
+        .perspective-1000 { perspective: 1000px; }
+        .transform-style-3d { transform-style: preserve-3d; }
         .backface-hidden {
             backface-visibility: hidden;
-            -webkit-backface-visibility: hidden; /* Safari 지원 */
+            -webkit-backface-visibility: hidden;
         }
-        .rotate-y-180 {
-            transform: rotateY(180deg);
-        }
+        .rotate-y-180 { transform: rotateY(180deg); }
         
         .card-inner {
-            transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+            transition: transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1);
         }
         
-        /* 카드가 뒤집혔을 때의 상태 */
         .card.flipped .card-inner {
             transform: rotateY(180deg);
         }
 
-        /* 매칭된 카드는 약간 투명해지고 튀어오르는 효과 */
+        /* 매칭 성공 시 효과 */
         .card.matched {
-            opacity: 0.6;
-            transform: scale(0.95);
+            opacity: 0.5;
+            transform: scale(0.92);
             transition: all 0.3s ease;
         }
 
-        /* 카드 앞면(사진) 이미지 설정 */
+        /* 매칭 실패 시 흔들림 효과 */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px) rotate(-2deg); }
+            40%, 80% { transform: translateX(5px) rotate(2deg); }
+        }
+        .shake .card-inner {
+            animation: shake 0.4s ease-in-out;
+            background-color: #fee2e2; /* 살짝 붉은 빛 */
+        }
+
         .card-front {
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
         }
+
+        /* 콤보 강조 애니메이션 */
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); color: #ef4444; }
+            100% { transform: scale(1); }
+        }
+        .combo-pop {
+            animation: pop 0.3s ease-out;
+        }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen font-sans flex flex-col">
+<body class="bg-gray-100 font-sans flex flex-col w-full">
 
-    <!-- 헤더 영역 -->
-    <header class="bg-white shadow-sm py-4 px-6 text-center z-10 sticky top-0">
-        <h1 class="text-2xl md:text-3xl font-black text-gray-800 tracking-tight">🤯 예수천국 메모리 게임</h1>
-        <div class="mt-2 flex justify-center items-center space-x-6 text-sm font-semibold text-gray-600">
-            <p>시도 횟수: <span id="moves" class="text-blue-600 text-lg">0</span></p>
-            <button id="restart-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 py-1 px-3 rounded-full transition duration-200">
-                다시 시작
-            </button>
+    <!-- 헤더 영역 (최소화하여 공간 확보) -->
+    <header class="bg-white shadow-sm py-2 px-4 text-center z-10 shrink-0">
+        <h1 class="text-xl md:text-2xl font-black text-gray-800 tracking-tight">🤯 예수천국 메모리 게임</h1>
+        <div class="mt-1 flex justify-between items-center max-w-md mx-auto text-xs md:text-sm font-bold text-gray-600 px-2">
+            <div class="flex flex-col items-start">
+                <p>⏱ <span id="timer" class="text-gray-800 text-base">0.0</span>s</p>
+                <p>🔥 콤보: <span id="combo" class="text-orange-500 text-base">0</span></p>
+            </div>
+            <div class="flex flex-col items-center">
+                <button id="restart-btn" class="bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700 py-1 px-3 rounded-full transition duration-150 shadow-sm">
+                    새게임
+                </button>
+            </div>
+            <div class="flex flex-col items-end">
+                <p>시도: <span id="moves" class="text-blue-600 text-base">0</span></p>
+                <p>점수: <span id="score" class="text-green-600 text-base">0</span></p>
+            </div>
         </div>
     </header>
 
-    <!-- 게임 보드 영역 -->
-    <main class="flex-1 flex justify-center items-center p-4">
-        <!-- 5x4 그리드 (모바일에서는 카드가 작아짐) -->
-        <div id="game-board" class="grid grid-cols-4 md:grid-cols-5 gap-2 md:gap-4 w-full max-w-4xl mx-auto">
+    <!-- 게임 보드 영역 (남은 화면 꽉 채우기) -->
+    <main class="flex-1 flex justify-center items-center p-2 md:p-4 overflow-hidden">
+        <!-- 모바일: 세로로 4칸x5줄 / PC: 가로로 5칸x4줄 -->
+        <div id="game-board" class="grid grid-cols-4 grid-rows-5 md:grid-cols-5 md:grid-rows-4 gap-1.5 md:gap-3 w-full h-full max-w-4xl mx-auto">
             <!-- 자바스크립트로 카드가 생성되어 여기에 들어갑니다 -->
         </div>
     </main>
 
     <!-- 승리 모달창 -->
-    <div id="win-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex justify-center items-center z-50">
-        <div class="bg-white rounded-2xl p-8 max-w-sm w-[90%] text-center transform scale-95 transition-transform duration-300">
-            <h2 class="text-3xl font-black text-gray-800 mb-4">🎉 게임 클리어!</h2>
-            <p class="text-gray-600 mb-6">총 <span id="final-moves" class="font-bold text-blue-600 text-xl"></span> 번의 시도 만에 친구들의 얼굴을 모두 맞췄습니다!</p>
-            <button id="play-again-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition duration-200">
-                한 판 더 하기
+    <div id="win-modal" class="fixed inset-0 bg-black bg-opacity-75 hidden flex justify-center items-center z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-[85%] text-center transform scale-95 transition-transform duration-300 shadow-2xl border-4 border-yellow-400">
+            <h2 class="text-3xl font-black text-gray-800 mb-2">🎉 클리어! 🎉</h2>
+            <div class="text-5xl my-4" id="grade-emoji">🏆</div>
+            <div class="bg-gray-50 rounded-lg p-4 mb-6 shadow-inner text-left text-gray-700 space-y-2 font-bold">
+                <p class="flex justify-between"><span>최종 점수:</span> <span id="final-score" class="text-green-600 text-xl"></span></p>
+                <p class="flex justify-between"><span>클리어 타임:</span> <span id="final-time" class="text-gray-900"></span></p>
+                <p class="flex justify-between"><span>총 시도 횟수:</span> <span id="final-moves" class="text-blue-600"></span></p>
+                <p class="flex justify-between border-t border-gray-200 pt-2 mt-2"><span>최종 등급:</span> <span id="final-grade" class="text-2xl text-red-500"></span></p>
+            </div>
+            <button id="play-again-btn" class="w-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black py-3 px-4 rounded-xl shadow-lg transition duration-200">
+                다시 도전하기!
             </button>
         </div>
     </div>
 
     <script>
-        /**
-         * [중요] 이미지 파일 설정
-         * 깃허브에 올릴 때, 10장의 사진 파일 이름을 아래 배열과 똑같이 맞춰서
-         * 이 HTML 파일과 같은 폴더에 업로드하세요. (예: 1.jpeg, 2.jpeg ...)
-         * 해상도는 카카오톡으로 전송해서 용량을 줄이거나 500x500 픽셀 정도로 자르는 것을 추천합니다.
-         */
         const imageFiles = [
             '1.jpeg', '2.jpeg', '3.jpeg', '4.jpeg', '5.jpeg',
             '6.jpeg', '7.jpeg', '8.jpeg', '9.jpeg', '10.jpeg'
@@ -92,46 +121,64 @@
 
         const gameBoard = document.getElementById('game-board');
         const movesDisplay = document.getElementById('moves');
+        const scoreDisplay = document.getElementById('score');
+        const comboDisplay = document.getElementById('combo');
+        const timerDisplay = document.getElementById('timer');
         const winModal = document.getElementById('win-modal');
-        const finalMovesDisplay = document.getElementById('final-moves');
         
-        let cards = [];
         let hasFlippedCard = false;
         let lockBoard = false;
         let firstCard, secondCard;
+        
+        // 게임 상태 변수
         let moves = 0;
+        let score = 0;
+        let combo = 0;
         let matchedPairs = 0;
         const totalPairs = imageFiles.length;
+        
+        // 타이머 변수
+        let startTime;
+        let timerInterval;
+        let isTimerRunning = false;
 
-        // 게임 초기화 함수
+        // 게임 초기화
         function initGame() {
             gameBoard.innerHTML = '';
             moves = 0;
+            score = 0;
+            combo = 0;
             matchedPairs = 0;
+            isTimerRunning = false;
+            clearInterval(timerInterval);
+            
             movesDisplay.innerText = moves;
+            scoreDisplay.innerText = score;
+            comboDisplay.innerText = combo;
+            timerDisplay.innerText = "0.0";
+            
             winModal.classList.add('hidden');
             winModal.children[0].classList.replace('scale-100', 'scale-95');
+            resetBoard();
 
-            // 카드 2장씩 쌍으로 만들기
+            // 카드 섞기
             let deck = [...imageFiles, ...imageFiles];
-            // 카드 섞기 (Fisher-Yates 알고리즘)
             deck = deck.sort(() => Math.random() - 0.5);
 
-            // HTML 카드 요소 생성
-            deck.forEach((imagePath, index) => {
+            // 카드 생성 (화면 비율에 맞게 꽉 차도록 h-full, w-full 적용)
+            deck.forEach((imagePath) => {
                 const card = document.createElement('div');
-                // 반응형 카드 크기 설정 (비율 유지)
-                card.classList.add('card', 'perspective-1000', 'cursor-pointer', 'relative', 'aspect-[3/4]', 'w-full');
+                card.classList.add('card', 'perspective-1000', 'cursor-pointer', 'relative', 'w-full', 'h-full');
                 card.dataset.image = imagePath;
 
                 card.innerHTML = `
-                    <div class="card-inner w-full h-full relative transform-style-3d rounded-xl shadow-md">
-                        <!-- 카드 뒷면 (클릭 전 보이는 면) -->
-                        <div class="card-back absolute w-full h-full backface-hidden bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center border-4 border-white">
-                            <span class="text-white text-4xl opacity-50">?</span>
+                    <div class="card-inner w-full h-full relative transform-style-3d rounded-xl shadow-[0_4px_6px_rgba(0,0,0,0.3)]">
+                        <!-- 뒷면 (보라색 그라데이션 물음표) -->
+                        <div class="card-back absolute w-full h-full backface-hidden bg-gradient-to-br from-purple-600 to-indigo-800 rounded-xl flex items-center justify-center border-2 border-white/50">
+                            <span class="text-white text-3xl md:text-5xl font-black opacity-60">?</span>
                         </div>
-                        <!-- 카드 앞면 (사진) -->
-                        <div class="card-front absolute w-full h-full backface-hidden rotate-y-180 rounded-xl bg-white border-4 border-white shadow-inner overflow-hidden" 
+                        <!-- 앞면 (사진) -->
+                        <div class="card-front absolute w-full h-full backface-hidden rotate-y-180 rounded-xl bg-white border-2 border-white shadow-inner overflow-hidden" 
                              style="background-image: url('${imagePath}');">
                         </div>
                     </div>
@@ -142,82 +189,140 @@
             });
         }
 
-        // 카드 뒤집기 함수
+        // 타이머 시작
+        function startTimer() {
+            if (isTimerRunning) return;
+            isTimerRunning = true;
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                const elapsedTime = (Date.now() - startTime) / 1000;
+                timerDisplay.innerText = elapsedTime.toFixed(1);
+            }, 100);
+        }
+
+        // 카드 뒤집기
         function flipCard() {
             if (lockBoard) return;
             if (this === firstCard) return;
 
+            startTimer(); // 첫 클릭 시 타이머 시작
+
             this.classList.add('flipped');
 
             if (!hasFlippedCard) {
-                // 첫 번째 클릭
                 hasFlippedCard = true;
                 firstCard = this;
                 return;
             }
 
-            // 두 번째 클릭
             secondCard = this;
             moves++;
             movesDisplay.innerText = moves;
             checkForMatch();
         }
 
-        // 짝이 맞는지 확인
+        // 일치 확인 및 점수/콤보 로직
         function checkForMatch() {
             let isMatch = firstCard.dataset.image === secondCard.dataset.image;
 
             if (isMatch) {
+                // 성공 로직
+                combo++;
+                // 기본 100점 + 콤보당 추가 50점
+                const earnedPoints = 100 + (combo * 50); 
+                score += earnedPoints;
+                
+                // UI 업데이트
+                scoreDisplay.innerText = score;
+                comboDisplay.innerText = combo;
+                
+                // 콤보 애니메이션 트리거
+                comboDisplay.classList.remove('combo-pop');
+                void comboDisplay.offsetWidth; // DOM reflow 강제
+                comboDisplay.classList.add('combo-pop');
+
                 disableCards();
             } else {
+                // 실패 로직
+                combo = 0; // 콤보 초기화
+                score = Math.max(0, score - 20); // 틀리면 20점 감점 (0점 이하로 안 떨어짐)
+                
+                scoreDisplay.innerText = score;
+                comboDisplay.innerText = combo;
+
                 unflipCards();
             }
         }
 
-        // 짝이 맞았을 때 처리
         function disableCards() {
             firstCard.removeEventListener('click', flipCard);
             secondCard.removeEventListener('click', flipCard);
 
-            // 매칭된 효과 주기
             firstCard.classList.add('matched');
             secondCard.classList.add('matched');
 
             matchedPairs++;
             
             if (matchedPairs === totalPairs) {
+                clearInterval(timerInterval);
                 setTimeout(gameWin, 500);
             }
 
             resetBoard();
         }
 
-        // 짝이 틀렸을 때 원래대로 뒤집기
         function unflipCards() {
             lockBoard = true;
+            
+            // 틀렸을 때 흔들리는 효과
+            firstCard.classList.add('shake');
+            secondCard.classList.add('shake');
 
             setTimeout(() => {
-                firstCard.classList.remove('flipped');
-                secondCard.classList.remove('flipped');
+                firstCard.classList.remove('flipped', 'shake');
+                secondCard.classList.remove('flipped', 'shake');
                 resetBoard();
-            }, 1000); // 1초 뒤에 뒤집힘
+            }, 800); // 흔들림 후 좀 더 빨리(0.8초) 뒤집힘
         }
 
-        // 상태 초기화
         function resetBoard() {
             [hasFlippedCard, lockBoard] = [false, false];
             [firstCard, secondCard] = [null, null];
         }
 
-        // 게임 승리 처리
+        // 게임 승리 처리 및 등급 판정
         function gameWin() {
-            finalMovesDisplay.innerText = moves;
+            const finalTime = parseFloat(timerDisplay.innerText);
+            
+            // 시간에 따른 추가 점수 보너스 (빨리 깰수록 높음)
+            let timeBonus = Math.max(0, 3000 - Math.floor(finalTime * 50));
+            score += timeBonus;
+
+            // 등급 판정
+            let grade = 'F';
+            let emoji = '😢';
+            if (score >= 3500) { grade = 'S'; emoji = '👑'; }
+            else if (score >= 2500) { grade = 'A'; emoji = '🤩'; }
+            else if (score >= 1500) { grade = 'B'; emoji = '🙂'; }
+            else if (score >= 800)  { grade = 'C'; emoji = '🤔'; }
+
+            // 모달 정보 업데이트
+            document.getElementById('final-score').innerText = score + ' 점';
+            document.getElementById('final-time').innerText = finalTime + ' 초';
+            document.getElementById('final-moves').innerText = moves + ' 번';
+            document.getElementById('final-grade').innerText = grade;
+            document.getElementById('grade-emoji').innerText = emoji;
+
             winModal.classList.remove('hidden');
             setTimeout(() => {
                 winModal.children[0].classList.replace('scale-95', 'scale-100');
             }, 10);
             
-            // 축하 폭죽 효과
+            shootConfetti();
+        }
+
+        // 폭죽 효과
+        function shootConfetti() {
             var duration = 3 * 1000;
             var animationEnd = Date.now() + duration;
             var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100 };
@@ -228,10 +333,7 @@
 
             var interval = setInterval(function() {
               var timeLeft = animationEnd - Date.now();
-
-              if (timeLeft <= 0) {
-                return clearInterval(interval);
-              }
+              if (timeLeft <= 0) return clearInterval(interval);
 
               var particleCount = 50 * (timeLeft / duration);
               confetti(Object.assign({}, defaults, { particleCount,
@@ -243,11 +345,15 @@
             }, 250);
         }
 
-        // 버튼 이벤트 리스너
+        // 이벤트 리스너
         document.getElementById('restart-btn').addEventListener('click', initGame);
         document.getElementById('play-again-btn').addEventListener('click', initGame);
 
-        // 게임 최초 실행
+        // 스크롤 및 핀치 줌 방지 (모바일 앱 느낌 강화)
+        document.addEventListener('touchmove', function (event) {
+            if (event.scale !== 1) { event.preventDefault(); }
+        }, { passive: false });
+
         initGame();
     </script>
 </body>

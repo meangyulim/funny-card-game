@@ -10,8 +10,8 @@
         /* 100dvh를 사용하여 모바일 브라우저 주소창을 제외한 순수 화면 크기에 맞춤 */
         body {
             height: 100dvh;
-            overflow: hidden; /* 스크롤 방지 */
-            touch-action: none; /* 모바일에서 화면 당겨서 새로고침 방지 */
+            overflow: hidden;
+            touch-action: none;
         }
 
         /* 카드 3D 뒤집기 효과 */
@@ -46,7 +46,7 @@
         }
         .shake .card-inner {
             animation: shake 0.4s ease-in-out;
-            background-color: #fee2e2; /* 살짝 붉은 빛 */
+            background-color: #fee2e2;
         }
 
         .card-front {
@@ -64,56 +64,274 @@
         .combo-pop {
             animation: pop 0.3s ease-out;
         }
+
+        /* 스크롤바 숨기기 (랭킹 모달용) */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
     </style>
 </head>
-<body class="bg-gray-100 font-sans flex flex-col w-full">
+<body class="bg-gray-100 font-sans flex flex-col w-full relative">
 
-    <!-- 헤더 영역 (최소화하여 공간 확보) -->
+    <!-- 헤더 영역 -->
     <header class="bg-white shadow-sm py-2 px-4 text-center z-10 shrink-0">
-        <h1 class="text-xl md:text-2xl font-black text-gray-800 tracking-tight">🤯 예수천국 메모리 게임</h1>
-        <div class="mt-1 flex justify-between items-center max-w-md mx-auto text-xs md:text-sm font-bold text-gray-600 px-2">
-            <div class="flex flex-col items-start">
+        <div class="flex justify-between items-center max-w-4xl mx-auto mb-1">
+            <h1 class="text-xl md:text-2xl font-black text-gray-800 tracking-tight">🤯 예수천국 메모리</h1>
+            <button id="show-leaderboard-btn" class="bg-yellow-400 hover:bg-yellow-500 active:bg-yellow-600 text-yellow-900 font-bold py-1 px-3 rounded-full text-sm shadow-sm transition flex items-center gap-1">
+                🏆 랭킹
+            </button>
+        </div>
+        <div class="flex justify-between items-center max-w-4xl mx-auto text-xs md:text-sm font-bold text-gray-600 px-1">
+            <div class="flex flex-col items-start w-20">
                 <p>⏱ <span id="timer" class="text-gray-800 text-base">0.0</span>s</p>
                 <p>🔥 콤보: <span id="combo" class="text-orange-500 text-base">0</span></p>
             </div>
-            <div class="flex flex-col items-center">
-                <button id="restart-btn" class="bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700 py-1 px-3 rounded-full transition duration-150 shadow-sm">
-                    새게임
+            <div class="flex flex-col items-center flex-1">
+                <button id="restart-btn" class="bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700 py-1 px-4 rounded-full transition duration-150 shadow-sm font-bold">
+                    새 게임
                 </button>
             </div>
-            <div class="flex flex-col items-end">
+            <div class="flex flex-col items-end w-20">
                 <p>시도: <span id="moves" class="text-blue-600 text-base">0</span></p>
                 <p>점수: <span id="score" class="text-green-600 text-base">0</span></p>
             </div>
         </div>
     </header>
 
-    <!-- 게임 보드 영역 (남은 화면 꽉 채우기) -->
+    <!-- 게임 보드 영역 -->
     <main class="flex-1 flex justify-center items-center p-2 md:p-4 overflow-hidden">
-        <!-- 모바일: 세로로 4칸x5줄 / PC: 가로로 5칸x4줄 -->
         <div id="game-board" class="grid grid-cols-4 grid-rows-5 md:grid-cols-5 md:grid-rows-4 gap-1.5 md:gap-3 w-full h-full max-w-4xl mx-auto">
             <!-- 자바스크립트로 카드가 생성되어 여기에 들어갑니다 -->
         </div>
     </main>
 
     <!-- 승리 모달창 -->
-    <div id="win-modal" class="fixed inset-0 bg-black bg-opacity-75 hidden flex justify-center items-center z-50">
-        <div class="bg-white rounded-2xl p-6 max-w-sm w-[85%] text-center transform scale-95 transition-transform duration-300 shadow-2xl border-4 border-yellow-400">
+    <div id="win-modal" class="fixed inset-0 bg-black bg-opacity-80 hidden flex justify-center items-center z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-[90%] text-center transform scale-95 transition-transform duration-300 shadow-2xl border-4 border-yellow-400 relative">
             <h2 class="text-3xl font-black text-gray-800 mb-2">🎉 클리어! 🎉</h2>
-            <div class="text-5xl my-4" id="grade-emoji">🏆</div>
-            <div class="bg-gray-50 rounded-lg p-4 mb-6 shadow-inner text-left text-gray-700 space-y-2 font-bold">
-                <p class="flex justify-between"><span>최종 점수:</span> <span id="final-score" class="text-green-600 text-xl"></span></p>
+            <div class="text-5xl my-3" id="grade-emoji">🏆</div>
+            
+            <div class="bg-gray-50 rounded-lg p-3 mb-4 shadow-inner text-left text-gray-700 space-y-1.5 font-bold text-sm">
+                <p class="flex justify-between"><span>최종 점수:</span> <span id="final-score" class="text-green-600 text-lg"></span></p>
                 <p class="flex justify-between"><span>클리어 타임:</span> <span id="final-time" class="text-gray-900"></span></p>
                 <p class="flex justify-between"><span>총 시도 횟수:</span> <span id="final-moves" class="text-blue-600"></span></p>
-                <p class="flex justify-between border-t border-gray-200 pt-2 mt-2"><span>최종 등급:</span> <span id="final-grade" class="text-2xl text-red-500"></span></p>
+                <p class="flex justify-between border-t border-gray-200 pt-1.5 mt-1.5 items-center">
+                    <span>최종 등급:</span> <span id="final-grade" class="text-2xl text-red-500 font-black"></span>
+                </p>
             </div>
+
+            <!-- 랭킹 등록 폼 -->
+            <div id="ranking-submit-section" class="mb-4 bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                <p class="text-xs text-yellow-800 mb-2 font-bold">명예의 전당에 점수를 등록하세요!</p>
+                <div class="flex gap-2">
+                    <input type="text" id="player-name" maxlength="8" placeholder="이름 (8자 이내)" class="flex-1 border-2 border-yellow-300 rounded-lg px-2 py-1.5 text-sm font-bold focus:outline-none focus:border-yellow-500">
+                    <button id="submit-score-btn" class="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-black px-3 py-1.5 rounded-lg shadow-sm whitespace-nowrap">
+                        등록!
+                    </button>
+                </div>
+                <p id="submit-msg" class="text-sm font-bold mt-2 hidden"></p>
+            </div>
+
             <button id="play-again-btn" class="w-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black py-3 px-4 rounded-xl shadow-lg transition duration-200">
                 다시 도전하기!
             </button>
         </div>
     </div>
 
-    <script>
+    <!-- 랭킹 모달창 -->
+    <div id="leaderboard-modal" class="fixed inset-0 bg-black bg-opacity-80 hidden flex justify-center items-center z-[60]">
+        <div class="bg-slate-800 text-white rounded-2xl p-1 max-w-sm w-[90%] text-center transform scale-95 transition-transform duration-300 shadow-2xl relative border-4 border-slate-600">
+            <div class="bg-slate-900 rounded-xl p-5">
+                <h2 class="text-2xl font-black text-yellow-400 mb-4 tracking-wider flex items-center justify-center gap-2">
+                    👑 명예의 전당 👑
+                </h2>
+                
+                <!-- 랭킹 리스트 영역 (스크롤 가능) -->
+                <div class="bg-slate-800 rounded-lg h-64 overflow-y-auto hide-scrollbar mb-4 border border-slate-700 p-2 shadow-inner">
+                    <ul id="leaderboard-list" class="space-y-2 text-left">
+                        <!-- 로딩 표시 -->
+                        <li class="text-center text-slate-400 py-4 text-sm font-bold">
+                            데이터를 불러오는 중입니다...
+                        </li>
+                    </ul>
+                </div>
+
+                <button id="close-leaderboard-btn" class="w-full bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-white font-black py-2.5 px-4 rounded-xl shadow transition duration-200">
+                    닫기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase 및 게임 로직 모듈 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==========================================
+        // Firebase 및 랭킹 시스템 초기화
+        // ==========================================
+        let db, auth, currentUser;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'jesus-heaven-memory-game';
+        
+        const leaderboardList = document.getElementById('leaderboard-list');
+        const submitMsg = document.getElementById('submit-msg');
+        let globalRankings = []; // 전체 랭킹 데이터 캐싱
+
+        try {
+            // Firebase Config 환경 변수 확인 (플랫폼 제공)
+            if (typeof __firebase_config !== 'undefined') {
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // 규칙 3: 반드시 인증부터 수행
+                const initAuth = async () => {
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("인증 실패:", error);
+                        leaderboardList.innerHTML = `<li class="text-center text-red-400 py-4 text-sm font-bold">오프라인 모드입니다.</li>`;
+                    }
+                };
+                initAuth();
+
+                onAuthStateChanged(auth, (user) => {
+                    currentUser = user;
+                    if (user) {
+                        fetchRankings();
+                    }
+                });
+            } else {
+                leaderboardList.innerHTML = `<li class="text-center text-slate-400 py-4 text-sm font-bold">서버 환경이 아닙니다.</li>`;
+            }
+        } catch (e) {
+            console.error("Firebase 로드 오류:", e);
+        }
+
+        // 실시간 랭킹 데이터 가져오기 (규칙 2: 쿼리 조건 없이 모두 가져온 후 메모리 정렬)
+        function fetchRankings() {
+            if (!currentUser || !db) return;
+            const rankingsRef = collection(db, 'artifacts', appId, 'public', 'data', 'rankings');
+            
+            onSnapshot(rankingsRef, (snapshot) => {
+                const fetched = [];
+                snapshot.forEach(doc => fetched.push(doc.data()));
+                
+                // 점수 내림차순 -> 시간 오름차순 정렬
+                fetched.sort((a, b) => {
+                    if (b.score !== a.score) return b.score - a.score;
+                    return a.time - b.time;
+                });
+                
+                globalRankings = fetched.slice(0, 50); // 상위 50명만 메모리에 유지
+                renderLeaderboard();
+            }, (error) => {
+                console.error("랭킹 동기화 실패:", error);
+            });
+        }
+
+        // 랭킹 리스트 그리기
+        function renderLeaderboard() {
+            if (globalRankings.length === 0) {
+                leaderboardList.innerHTML = `<li class="text-center text-slate-400 py-8 text-sm font-bold">아직 등록된 랭킹이 없습니다.<br>첫 번째 랭커가 되어보세요!</li>`;
+                return;
+            }
+
+            leaderboardList.innerHTML = '';
+            globalRankings.forEach((rank, index) => {
+                const li = document.createElement('li');
+                li.className = "flex justify-between items-center p-2 rounded-md bg-slate-700 mb-1 border border-slate-600";
+                
+                let medal = `${index + 1}위`;
+                let nameStyle = "text-slate-200 font-bold text-sm";
+                
+                if (index === 0) { medal = "🥇"; nameStyle = "text-yellow-400 font-black text-base"; li.classList.replace('bg-slate-700', 'bg-slate-800'); li.style.borderColor = "#facc15"; }
+                else if (index === 1) { medal = "🥈"; nameStyle = "text-slate-300 font-bold text-base"; li.classList.replace('bg-slate-700', 'bg-slate-800'); }
+                else if (index === 2) { medal = "🥉"; nameStyle = "text-amber-600 font-bold text-base"; li.classList.replace('bg-slate-700', 'bg-slate-800'); }
+
+                li.innerHTML = `
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <span class="font-black text-slate-400 w-6 text-center">${medal}</span>
+                        <span class="${nameStyle} truncate max-w-[100px]">${sanitize(rank.name)}</span>
+                    </div>
+                    <div class="flex flex-col items-end leading-tight">
+                        <span class="text-green-400 font-black tracking-tight">${rank.score}점</span>
+                        <span class="text-slate-400 text-[10px]">${rank.time.toFixed(1)}초</span>
+                    </div>
+                `;
+                leaderboardList.appendChild(li);
+            });
+        }
+
+        // XSS 방지용 함수
+        function sanitize(str) {
+            const temp = document.createElement('div');
+            temp.textContent = str;
+            return temp.innerHTML;
+        }
+
+        // 점수 제출 핸들러
+        document.getElementById('submit-score-btn').addEventListener('click', async () => {
+            const nameInput = document.getElementById('player-name');
+            const name = nameInput.value.trim() || "익명";
+            const finalScore = score;
+            const finalTime = parseFloat(document.getElementById('timer').innerText);
+            
+            submitMsg.classList.remove('hidden', 'text-green-600', 'text-red-600');
+            submitMsg.innerText = "등록 중...";
+            
+            if (!currentUser || !db) {
+                submitMsg.innerText = "서버 연결이 안 되어 임시 저장되었습니다.";
+                submitMsg.classList.add('text-red-600');
+                return;
+            }
+
+            try {
+                // 규칙 1: 퍼블릭 데이터 컬렉션 경로 사용
+                const rankingsRef = collection(db, 'artifacts', appId, 'public', 'data', 'rankings');
+                await addDoc(rankingsRef, {
+                    name: name,
+                    score: finalScore,
+                    time: finalTime,
+                    timestamp: Date.now()
+                });
+                
+                document.getElementById('ranking-submit-section').classList.add('opacity-50', 'pointer-events-none');
+                submitMsg.innerText = "랭킹 등록 완료! 명예의 전당을 확인하세요.";
+                submitMsg.classList.add('text-green-600');
+            } catch (error) {
+                console.error("점수 등록 에러:", error);
+                submitMsg.innerText = "등록에 실패했습니다. 다시 시도해주세요.";
+                submitMsg.classList.add('text-red-600');
+            }
+        });
+
+        // 랭킹 모달 컨트롤
+        const leaderboardModal = document.getElementById('leaderboard-modal');
+        document.getElementById('show-leaderboard-btn').addEventListener('click', () => {
+            leaderboardModal.classList.remove('hidden');
+            setTimeout(() => { leaderboardModal.children[0].classList.replace('scale-95', 'scale-100'); }, 10);
+        });
+        document.getElementById('close-leaderboard-btn').addEventListener('click', () => {
+            leaderboardModal.children[0].classList.replace('scale-100', 'scale-95');
+            setTimeout(() => { leaderboardModal.classList.add('hidden'); }, 300);
+        });
+
+
+        // ==========================================
+        // 게임 핵심 로직
+        // ==========================================
         const imageFiles = [
             '1.jpeg', '2.jpeg', '3.jpeg', '4.jpeg', '5.jpeg',
             '6.jpeg', '7.jpeg', '8.jpeg', '9.jpeg', '10.jpeg'
@@ -130,19 +348,16 @@
         let lockBoard = false;
         let firstCard, secondCard;
         
-        // 게임 상태 변수
         let moves = 0;
         let score = 0;
         let combo = 0;
         let matchedPairs = 0;
         const totalPairs = imageFiles.length;
         
-        // 타이머 변수
         let startTime;
         let timerInterval;
         let isTimerRunning = false;
 
-        // 게임 초기화
         function initGame() {
             gameBoard.innerHTML = '';
             moves = 0;
@@ -157,15 +372,18 @@
             comboDisplay.innerText = combo;
             timerDisplay.innerText = "0.0";
             
+            // 등록 폼 초기화
+            document.getElementById('player-name').value = '';
+            document.getElementById('ranking-submit-section').classList.remove('opacity-50', 'pointer-events-none');
+            submitMsg.classList.add('hidden');
+            
             winModal.classList.add('hidden');
             winModal.children[0].classList.replace('scale-100', 'scale-95');
             resetBoard();
 
-            // 카드 섞기
             let deck = [...imageFiles, ...imageFiles];
             deck = deck.sort(() => Math.random() - 0.5);
 
-            // 카드 생성 (화면 비율에 맞게 꽉 차도록 h-full, w-full 적용)
             deck.forEach((imagePath) => {
                 const card = document.createElement('div');
                 card.classList.add('card', 'perspective-1000', 'cursor-pointer', 'relative', 'w-full', 'h-full');
@@ -173,11 +391,9 @@
 
                 card.innerHTML = `
                     <div class="card-inner w-full h-full relative transform-style-3d rounded-xl shadow-[0_4px_6px_rgba(0,0,0,0.3)]">
-                        <!-- 뒷면 (보라색 그라데이션 물음표) -->
                         <div class="card-back absolute w-full h-full backface-hidden bg-gradient-to-br from-purple-600 to-indigo-800 rounded-xl flex items-center justify-center border-2 border-white/50">
                             <span class="text-white text-3xl md:text-5xl font-black opacity-60">?</span>
                         </div>
-                        <!-- 앞면 (사진) -->
                         <div class="card-front absolute w-full h-full backface-hidden rotate-y-180 rounded-xl bg-white border-2 border-white shadow-inner overflow-hidden" 
                              style="background-image: url('${imagePath}');">
                         </div>
@@ -189,7 +405,6 @@
             });
         }
 
-        // 타이머 시작
         function startTimer() {
             if (isTimerRunning) return;
             isTimerRunning = true;
@@ -200,13 +415,11 @@
             }, 100);
         }
 
-        // 카드 뒤집기
         function flipCard() {
             if (lockBoard) return;
             if (this === firstCard) return;
 
-            startTimer(); // 첫 클릭 시 타이머 시작
-
+            startTimer();
             this.classList.add('flipped');
 
             if (!hasFlippedCard) {
@@ -221,35 +434,27 @@
             checkForMatch();
         }
 
-        // 일치 확인 및 점수/콤보 로직
         function checkForMatch() {
             let isMatch = firstCard.dataset.image === secondCard.dataset.image;
 
             if (isMatch) {
-                // 성공 로직
                 combo++;
-                // 기본 100점 + 콤보당 추가 50점
                 const earnedPoints = 100 + (combo * 50); 
                 score += earnedPoints;
                 
-                // UI 업데이트
                 scoreDisplay.innerText = score;
                 comboDisplay.innerText = combo;
                 
-                // 콤보 애니메이션 트리거
                 comboDisplay.classList.remove('combo-pop');
-                void comboDisplay.offsetWidth; // DOM reflow 강제
+                void comboDisplay.offsetWidth;
                 comboDisplay.classList.add('combo-pop');
 
                 disableCards();
             } else {
-                // 실패 로직
-                combo = 0; // 콤보 초기화
-                score = Math.max(0, score - 20); // 틀리면 20점 감점 (0점 이하로 안 떨어짐)
-                
+                combo = 0;
+                score = Math.max(0, score - 20);
                 scoreDisplay.innerText = score;
                 comboDisplay.innerText = combo;
-
                 unflipCards();
             }
         }
@@ -273,8 +478,6 @@
 
         function unflipCards() {
             lockBoard = true;
-            
-            // 틀렸을 때 흔들리는 효과
             firstCard.classList.add('shake');
             secondCard.classList.add('shake');
 
@@ -282,7 +485,7 @@
                 firstCard.classList.remove('flipped', 'shake');
                 secondCard.classList.remove('flipped', 'shake');
                 resetBoard();
-            }, 800); // 흔들림 후 좀 더 빨리(0.8초) 뒤집힘
+            }, 800);
         }
 
         function resetBoard() {
@@ -290,15 +493,11 @@
             [firstCard, secondCard] = [null, null];
         }
 
-        // 게임 승리 처리 및 등급 판정
         function gameWin() {
             const finalTime = parseFloat(timerDisplay.innerText);
-            
-            // 시간에 따른 추가 점수 보너스 (빨리 깰수록 높음)
             let timeBonus = Math.max(0, 3000 - Math.floor(finalTime * 50));
             score += timeBonus;
 
-            // 등급 판정
             let grade = 'F';
             let emoji = '😢';
             if (score >= 3500) { grade = 'S'; emoji = '👑'; }
@@ -306,7 +505,6 @@
             else if (score >= 1500) { grade = 'B'; emoji = '🙂'; }
             else if (score >= 800)  { grade = 'C'; emoji = '🤔'; }
 
-            // 모달 정보 업데이트
             document.getElementById('final-score').innerText = score + ' 점';
             document.getElementById('final-time').innerText = finalTime + ' 초';
             document.getElementById('final-moves').innerText = moves + ' 번';
@@ -321,7 +519,6 @@
             shootConfetti();
         }
 
-        // 폭죽 효과
         function shootConfetti() {
             var duration = 3 * 1000;
             var animationEnd = Date.now() + duration;
@@ -345,11 +542,11 @@
             }, 250);
         }
 
-        // 이벤트 리스너
+        // 버튼 이벤트 리스너 연결
         document.getElementById('restart-btn').addEventListener('click', initGame);
         document.getElementById('play-again-btn').addEventListener('click', initGame);
 
-        // 스크롤 및 핀치 줌 방지 (모바일 앱 느낌 강화)
+        // 모바일 새로고침 당김(pull-to-refresh) 방지
         document.addEventListener('touchmove', function (event) {
             if (event.scale !== 1) { event.preventDefault(); }
         }, { passive: false });

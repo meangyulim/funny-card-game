@@ -77,7 +77,6 @@
 </head>
 <body class="bg-gray-100 font-sans flex flex-col w-full relative">
 
-    <!-- 헤더 영역 -->
     <header class="bg-white shadow-sm py-2 px-4 text-center z-10 shrink-0">
         <div class="flex justify-between items-center max-w-4xl mx-auto mb-1">
             <h1 class="text-xl md:text-2xl font-black text-gray-800 tracking-tight">🤯 예수천국 메모리</h1>
@@ -102,14 +101,11 @@
         </div>
     </header>
 
-    <!-- 게임 보드 영역 -->
     <main class="flex-1 flex justify-center items-center p-2 md:p-4 overflow-hidden">
         <div id="game-board" class="grid grid-cols-4 grid-rows-5 md:grid-cols-5 md:grid-rows-4 gap-1.5 md:gap-3 w-full h-full max-w-4xl mx-auto">
-            <!-- 자바스크립트로 카드가 생성되어 여기에 들어갑니다 -->
-        </div>
+            </div>
     </main>
 
-    <!-- 승리 모달창 -->
     <div id="win-modal" class="fixed inset-0 bg-black bg-opacity-80 hidden flex justify-center items-center z-50">
         <div class="bg-white rounded-2xl p-6 max-w-sm w-[90%] text-center transform scale-95 transition-transform duration-300 shadow-2xl border-4 border-yellow-400 relative">
             <h2 class="text-3xl font-black text-gray-800 mb-2">🎉 클리어! 🎉</h2>
@@ -124,7 +120,6 @@
                 </p>
             </div>
 
-            <!-- 랭킹 등록 폼 -->
             <div id="ranking-submit-section" class="mb-4 bg-yellow-50 p-3 rounded-lg border border-yellow-200">
                 <p class="text-xs text-yellow-800 mb-2 font-bold">명예의 전당에 점수를 등록하세요!</p>
                 <div class="flex gap-2">
@@ -142,7 +137,6 @@
         </div>
     </div>
 
-    <!-- 랭킹 모달창 -->
     <div id="leaderboard-modal" class="fixed inset-0 bg-black bg-opacity-80 hidden flex justify-center items-center z-[60]">
         <div class="bg-slate-800 text-white rounded-2xl p-1 max-w-sm w-[90%] text-center transform scale-95 transition-transform duration-300 shadow-2xl relative border-4 border-slate-600">
             <div class="bg-slate-900 rounded-xl p-5">
@@ -150,10 +144,8 @@
                     👑 명예의 전당 👑
                 </h2>
                 
-                <!-- 랭킹 리스트 영역 (스크롤 가능) -->
                 <div class="bg-slate-800 rounded-lg h-64 overflow-y-auto hide-scrollbar mb-4 border border-slate-700 p-2 shadow-inner">
                     <ul id="leaderboard-list" class="space-y-2 text-left">
-                        <!-- 로딩 표시 -->
                         <li class="text-center text-slate-400 py-4 text-sm font-bold">
                             데이터를 불러오는 중입니다...
                         </li>
@@ -167,74 +159,70 @@
         </div>
     </div>
 
-    <!-- Firebase 및 게임 로직 모듈 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ==========================================
         // Firebase 및 랭킹 시스템 초기화
         // ==========================================
         let db, auth, currentUser;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'jesus-heaven-memory-game';
         
         const leaderboardList = document.getElementById('leaderboard-list');
         const submitMsg = document.getElementById('submit-msg');
-        let globalRankings = []; // 전체 랭킹 데이터 캐싱
+        let globalRankings = []; 
+
+        // 🌟 민규님이 생성하신 고유 Firebase 설정 값입니다!
+        const firebaseConfig = {
+            apiKey: "AIzaSyCSMZ5951tEaOJcNILAfAA0K065gULK5dk",
+            authDomain: "jesus-card-game.firebaseapp.com",
+            projectId: "jesus-card-game",
+            storageBucket: "jesus-card-game.firebasestorage.app",
+            messagingSenderId: "1028701021133",
+            appId: "1:1028701021133:web:3345a6268be0290f9b1a84",
+            measurementId: "G-LYE3BVGD6D"
+        };
 
         try {
-            // Firebase Config 환경 변수 확인 (플랫폼 제공)
-            if (typeof __firebase_config !== 'undefined') {
-                const firebaseConfig = JSON.parse(__firebase_config);
-                const app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
 
-                // 규칙 3: 반드시 인증부터 수행
-                const initAuth = async () => {
-                    try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                    } catch (error) {
-                        console.error("인증 실패:", error);
-                        leaderboardList.innerHTML = `<li class="text-center text-red-400 py-4 text-sm font-bold">오프라인 모드입니다.</li>`;
-                    }
-                };
-                initAuth();
+            // 익명 로그인 수행 (누구나 랭킹 등록 가능하게)
+            signInAnonymously(auth).catch((error) => {
+                console.error("인증 실패:", error);
+                leaderboardList.innerHTML = `<li class="text-center text-red-400 py-4 text-sm font-bold">서버 연결에 실패했습니다.</li>`;
+            });
 
-                onAuthStateChanged(auth, (user) => {
-                    currentUser = user;
-                    if (user) {
-                        fetchRankings();
-                    }
-                });
-            } else {
-                leaderboardList.innerHTML = `<li class="text-center text-slate-400 py-4 text-sm font-bold">서버 환경이 아닙니다.</li>`;
-            }
+            onAuthStateChanged(auth, (user) => {
+                currentUser = user;
+                if (user) {
+                    fetchRankings();
+                }
+            });
         } catch (e) {
             console.error("Firebase 로드 오류:", e);
         }
 
-        // 실시간 랭킹 데이터 가져오기 (규칙 2: 쿼리 조건 없이 모두 가져온 후 메모리 정렬)
+        // 실시간 랭킹 데이터 가져오기
         function fetchRankings() {
             if (!currentUser || !db) return;
-            const rankingsRef = collection(db, 'artifacts', appId, 'public', 'data', 'rankings');
+            
+            // 데이터베이스 저장 경로: 'rankings'
+            const rankingsRef = collection(db, 'rankings');
             
             onSnapshot(rankingsRef, (snapshot) => {
                 const fetched = [];
                 snapshot.forEach(doc => fetched.push(doc.data()));
                 
-                // 점수 내림차순 -> 시간 오름차순 정렬
+                // 점수 내림차순 -> 점수가 같으면 시간 오름차순(빠른사람) 정렬
                 fetched.sort((a, b) => {
                     if (b.score !== a.score) return b.score - a.score;
                     return a.time - b.time;
                 });
                 
-                globalRankings = fetched.slice(0, 50); // 상위 50명만 메모리에 유지
+                globalRankings = fetched.slice(0, 50); // 상위 50명만 표시
                 renderLeaderboard();
             }, (error) => {
                 console.error("랭킹 동기화 실패:", error);
@@ -274,14 +262,14 @@
             });
         }
 
-        // XSS 방지용 함수
+        // XSS 해킹 방지용 함수
         function sanitize(str) {
             const temp = document.createElement('div');
             temp.textContent = str;
             return temp.innerHTML;
         }
 
-        // 점수 제출 핸들러
+        // 점수 제출 버튼 클릭 시 작동하는 기능
         document.getElementById('submit-score-btn').addEventListener('click', async () => {
             const nameInput = document.getElementById('player-name');
             const name = nameInput.value.trim() || "익명";
@@ -292,14 +280,14 @@
             submitMsg.innerText = "등록 중...";
             
             if (!currentUser || !db) {
-                submitMsg.innerText = "서버 연결이 안 되어 임시 저장되었습니다.";
+                submitMsg.innerText = "서버에 연결되지 않았습니다.";
                 submitMsg.classList.add('text-red-600');
                 return;
             }
 
             try {
-                // 규칙 1: 퍼블릭 데이터 컬렉션 경로 사용
-                const rankingsRef = collection(db, 'artifacts', appId, 'public', 'data', 'rankings');
+                const rankingsRef = collection(db, 'rankings');
+                // 파이어베이스에 점수 저장!
                 await addDoc(rankingsRef, {
                     name: name,
                     score: finalScore,
@@ -308,7 +296,7 @@
                 });
                 
                 document.getElementById('ranking-submit-section').classList.add('opacity-50', 'pointer-events-none');
-                submitMsg.innerText = "랭킹 등록 완료! 명예의 전당을 확인하세요.";
+                submitMsg.innerText = "등록 완료! 명예의 전당을 확인하세요.";
                 submitMsg.classList.add('text-green-600');
             } catch (error) {
                 console.error("점수 등록 에러:", error);
@@ -317,7 +305,7 @@
             }
         });
 
-        // 랭킹 모달 컨트롤
+        // 랭킹 모달창 열고 닫기 버튼 설정
         const leaderboardModal = document.getElementById('leaderboard-modal');
         document.getElementById('show-leaderboard-btn').addEventListener('click', () => {
             leaderboardModal.classList.remove('hidden');
@@ -330,7 +318,7 @@
 
 
         // ==========================================
-        // 게임 핵심 로직
+        // 카드 게임 로직
         // ==========================================
         const imageFiles = [
             '1.jpeg', '2.jpeg', '3.jpeg', '4.jpeg', '5.jpeg',
@@ -372,7 +360,7 @@
             comboDisplay.innerText = combo;
             timerDisplay.innerText = "0.0";
             
-            // 등록 폼 초기화
+            // 점수 등록 창 초기화
             document.getElementById('player-name').value = '';
             document.getElementById('ranking-submit-section').classList.remove('opacity-50', 'pointer-events-none');
             submitMsg.classList.add('hidden');
